@@ -217,7 +217,7 @@ class AVLTree():
 
 
     def FindLexema(self,lexema):
-        return lexema in  self.inorder_traverse()
+        return lexema in self.inorder_traverse()
 
     def display(self, level=0, pref=''):
         '''
@@ -232,18 +232,3 @@ class AVLTree():
                 self.node.left.display(level + 1, '<')
             if self.node.left != None:
                 self.node.right.display(level + 1, '>')
-
-# Usage example
-if __name__ == "__main__":
-    a = AVLTree()
-    print ("----- Inserting -------")
-    inlist = ["IF","ELSE","MAIN","WHILE","FOR","STRING","FLOAT","INT","BOOL","VARIABLES"]
-    for i in inlist:
-        a.insert(i)
-
-    a.display()
-
-    print
-    print ("Input--->", inlist)
-    print ("Inorder traversal:", a.inorder_traverse())
-    print ("Existe:",a.FindLexema("LET"))

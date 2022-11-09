@@ -6,4 +6,4 @@ class Error:
     self.err_cod = err_cod
    
   def __str__(self):
-    return f"line:{self.linea} error type:{self.tipo_error} error code:{self.err_cod}error_message:{self.error_message} \n"
+    return f"line:{self.linea} error type:{self.tipo_error} error code: {self.err_cod}error_message: {self.error_message} \n"

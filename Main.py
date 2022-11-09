@@ -2,17 +2,38 @@ import PySimpleGUI as sg
 import ArbolDlexemas as Arbol
 import Error
 
-
 #variables globales
+
+operadores_arit = Arbol.AVLTree()
+joken_arit = ["EQUAL","<",">","<=",">=","AND","OR","!="]
+
+for i in joken_arit:
+    operadores_arit.insert(i)
+
 
 Palabras_reservadas = Arbol.AVLTree()
 
-Joken_reserv = ["IF","ELSE","WHILE","FOR","STRING","FLOAT","INT","BOOL","VARIABLES","END","BEGIN"]
+Joken_reserv = ["IF","ELSE","WHILE","FOR","VARIABLES","END","PRINT"]
 for i in Joken_reserv:
     Palabras_reservadas.insert(i)
 
 instrucciones = []
 lexemasXinstruccion = []
+#----------------------------------------------------------------------------
+class Variable:
+  def __init__(self, identifier,data_type,valor):
+        self.data_type = data_type
+        self.valor = valor
+        self.identifier = identifier
+  def __str__(self):
+    return f"{self.identifier}//{self.data_type}//{self.valor}"
+
+Joken_types = Arbol.AVLTree()
+variables_program = []
+
+Joken_tipos = ["STRING","FLOAT","INT","BOOL","NULL","BOOL","ARRAY","LIST"]
+for i in Joken_tipos:
+    Joken_types.insert(i)
 
 def separa_Instrucciones(codigo):
     return codigo.split('\n')
@@ -56,32 +77,74 @@ def SintaxisBasica(mat):
     print("utima_fila ",ultima_fila)
     err=None
     if mat[ultima_fila][0].upper() != "END":
-        err = Error.Error(ultima_fila,"Joken program must be ended whith END whithout exception","imcomplete program sintax","0001")
+        err = Error.Error(ultima_fila,"Joken program must be ended whith END whithout exception","incomplete program sintax","0001")
+    if len(mat[ultima_fila]) > 1 != None and mat[ultima_fila][1].upper() != "PROGRAM" or len(mat[ultima_fila]) > 2:
+         err = Error.Error(ultima_fila,"END statement can only be behind pregonate PROGRAM","incorrect sintax","0002")
+    if mat[0][0].upper() != "VARIABLES":
+         err = Error.Error(ultima_fila,"Joken program must be started whith VARIABLES whithout exception","incomplete program sintax","0003")
+
     return err
 
+def IsVarType(lexema):
+    return Joken_types.FindLexema(lexema.upper())
+def IsReservada(lexema):
+    return Palabras_reservadas.FindLexema(lexema.upper())
+
+def IsVariable(lex):
+    return any(obj.identifier == lex for obj in variables_program)
+
+def LeerVariables(instruct):
+    if instruct[1] == '[' and instruct[-1] == ']' and  len(instruct) > 3:
+        index = 2
+        while index < len(instruct)-1:
+            if IsVarType(instruct[index]) and not IsReservada(instruct[index+1]) and not IsVarType(instruct[index+1]):
+                variables_program.append(Variable(instruct[index+1],instruct[index],None))
+            index+=2
+
+def IsCondicional(instruct):
+    return "IF" in instruct or "if" in instruct or "If" in instruct or "iF" in instruct
+
+def IsAsignacion(instruct):
+    return IsVariable(instruct[0]) and instruct[1] == '='
+
+
+
+def AnalizarInstruccion(instruct):
+    if(IsCondicional(instruct)):
+        return "Es condicional"
+    elif IsAsignacion(instruct):
+        return "Es asignacion"
 
 def main():
     
     window = make_window()
     while True:
         event, values = window.read()
-    # End program if user closes window
+    #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
         elif event == 'COMPILAR':
+            #variables_program.clear()
             instrucciones = separa_Instrucciones(values['CODE'])
             lexemasXinstruccion = list(map(ComposicionLexica,instrucciones))#separa cada instrucción en un array de lexemas
             lexemasXinstruccion = LimpiarCodigo(lexemasXinstruccion)# elimina espacios en blanco o muertos
             err = SintaxisBasica(lexemasXinstruccion)
-            if SintaxisBasica(lexemasXinstruccion) != None:
+            if err != None:
                 print ("hay errores")
                 window['salida'].Update(err,text_color='red')
             else:
-                window['salida'].Update('Compiled succesfully!',text_color='green')
+                LeerVariables(lexemasXinstruccion[0])
+                print(*variables_program)
+                if not variables_program:
+                    err = Error.Error(1,"Error inside [ ] in variables","Incomplete sintax","0004")
+                    window['salida'].Update(err,text_color='red')
+                else:
 
+                    for j in lexemasXinstruccion:
+                        print (AnalizarInstruccion(j))
+                    window['salida'].Update('Compiled succesfully!',text_color='green')
             for i in lexemasXinstruccion:
                 print("\n",i)
-
     window.close()
 
 if __name__ == '__main__':

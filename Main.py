@@ -4,12 +4,7 @@ import Error
 
 #variables globales
 
-operadores_arit = Arbol.AVLTree()
-joken_arit = ["EQUAL","<",">","<=",">=","AND","OR","!="]
-
-for i in joken_arit:
-    operadores_arit.insert(i)
-
+joken_log = ["EQUAL","<",">","<=",">=","AND","OR","!="]
 
 Palabras_reservadas = Arbol.AVLTree()
 
@@ -31,7 +26,7 @@ class Variable:
 Joken_types = Arbol.AVLTree()
 variables_program = []
 
-Joken_tipos = ["STRING","FLOAT","INT","BOOL","NULL","BOOL","ARRAY","LIST"]
+Joken_tipos = ["STRING","FLOAT","INT","BOOL","NULL","ARRAY","LIST"]
 for i in Joken_tipos:
     Joken_types.insert(i)
 
@@ -104,15 +99,57 @@ def LeerVariables(instruct):
 def IsCondicional(instruct):
     return "IF" in instruct or "if" in instruct or "If" in instruct or "iF" in instruct
 
+def AsignarValue(identifier,valor):
+    for i in range(len(variables_program)):
+        if variables_program[i].identifier == identifier:
+            variables_program[i].valor = valor
+            variables_program[i].data_type = type(valor)
+            print("valor asignado")
+
+
 def IsAsignacion(instruct):
     return IsVariable(instruct[0]) and instruct[1] == '='
 
-
-
+def Findoperator_logico(instruct):
+    i = 0
+    for i in instruct:
+        if i in joken_log and i:
+            i+=1
+    
 def AnalizarInstruccion(instruct):
     if(IsCondicional(instruct)):
-        return "Es condicional"
+        comas = instruct.count(',')
+        if comas < 2:#condicional simple
+            return "Es condicional simple"
+        elif comas == 2:
+            return "Es condicional compuesto"
+
     elif IsAsignacion(instruct):
+        igual = instruct.index("=")
+        val=None
+        asignado = instruct[igual+1:len(instruct)]
+        if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
+            val = int(asignado[0])
+            AsignarValue(instruct[0],int(asignado[0]))
+        elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
+            s = ""
+            for i in range(len(asignado)):
+                if i == 0 or i == len(asignado)-1:
+                    continue
+                else:
+                    s = s + asignado[i]
+            val=s
+            print("asigna string")
+        elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
+            val = asignado[0].upper() == 'TRUE'
+        elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
+            val = None
+
+        AsignarValue(instruct[0],val)
+
+        print("Variables ",*variables_program)    
+        print("asignado: ",*asignado)
+        
         return "Es asignacion"
 
 def main():

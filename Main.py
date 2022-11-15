@@ -69,7 +69,6 @@ def LimpiarCodigo(matriz):
 
 def SintaxisBasica(mat):
     ultima_fila = len(mat)-1
-    print("utima_fila ",ultima_fila)
     err=None
     if mat[ultima_fila][0].upper() != "END":
         err = Error.Error(ultima_fila,"Joken program must be ended whith END whithout exception","incomplete program sintax","0001")
@@ -97,7 +96,7 @@ def LeerVariables(instruct):
             index+=2
 
 def IsCondicional(instruct):
-    return "IF" in instruct or "if" in instruct or "If" in instruct or "iF" in instruct
+    return instruct[0] == "IF" or instruct[0] == "if" or instruct[0] == "If" or instruct[0] == "iF"
 
 def AsignarValue(identifier,valor):
     for i in range(len(variables_program)):
@@ -110,19 +109,76 @@ def AsignarValue(identifier,valor):
 def IsAsignacion(instruct):
     return IsVariable(instruct[0]) and instruct[1] == '='
 
+def GetVariable(identifier):
+    objeto = None
+    for k in variables_program:
+        if k.identifier == identifier:
+            objeto = k
+    return objeto
+
+
+
+def Resultado_Condicion(cond_array):
+    v1 = None
+    v2 = None
+    if IsVariable(cond_array[0]):
+        v1 = GetVariable(cond_array[0])
+    elif cond_array[0].isnumeric():
+        v1 = Variable("",type(int),int(cond_array[0]))
+    elif cond_array[0].upper() == "TRUE":
+        v1 = Variable("",type(bool),True)
+    elif cond_array[0].upper() == "FALSE":
+        v1 = Variable("",type(bool),False)
+
+    if IsVariable(cond_array[2]):
+        v2 = GetVariable(cond_array[2])
+    elif cond_array[2].isnumeric():
+        v2 = Variable("",type(int),int(cond_array[2]))    
+
+    if isinstance(v2.valor,int) and isinstance(v1.valor,int):#si es entero
+        if cond_array[1] == '<':
+            return  v1.valor < v2.valor
+        elif cond_array[1] == '>':
+            return  v1.valor > v2.valor
+        elif cond_array[1] == '>=':
+            return  v1.valor >= v2.valor
+        elif cond_array[1] == '<=':
+            return  v1.valor <= v2.valor
+        elif cond_array[1].upper() == 'EQUAL':
+            return  v1.valor == v2.valor
+        elif cond_array[1] == '!=':
+            return  v1.valor != v2.valor
+    elif isinstance(v2.valor,bool) and isinstance(v2.valor,bool):
+        if cond_array[1].upper() == 'EQUAL':
+            return  v1.valor == v2.valor
+        elif cond_array[1] == '!=':
+            return  v1.valor != v2.valor
+    elif isinstance(v2.valor,None) and isinstance(v1.valor,None): 
+        return True
+""""
 def Findoperator_logico(instruct):
     i = 0
     for i in instruct:
         if i in joken_log and i:
             i+=1
-    
-def AnalizarInstruccion(instruct):
+"""    
+def AnalizarInstruccion(instruct,j):
+    print('analizando linea ',j)
     if(IsCondicional(instruct)):
-        comas = instruct.count(',')
-        if comas < 2:#condicional simple
-            return "Es condicional simple"
-        elif comas == 2:
-            return "Es condicional compuesto"
+        if instruct[1] == "[" and instruct[-1] == ']':
+            print('if correcto')
+            comas = instruct.count(',')
+            if comas == 1:#condicional simple
+                salida = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
+                condicion = instruct[instruct.index(',')+1:len(instruct)-1]
+                print ('resultado ',Resultado_Condicion(condicion))
+                return None
+            elif comas == 2:# compuesto
+                return None
+            else:
+                return Error.Error(j,"error found on if condition","sintax error",'jk005')
+        else:
+            return Error.Error(j,"error found on if condition","sintax error",'jk005')
 
     elif IsAsignacion(instruct):
         igual = instruct.index("=")
@@ -150,7 +206,7 @@ def AnalizarInstruccion(instruct):
         print("Variables ",*variables_program)    
         print("asignado: ",*asignado)
         
-        return "Es asignacion"
+        return None
 
 def main():
     
@@ -176,12 +232,17 @@ def main():
                     err = Error.Error(1,"Error inside [ ] in variables","Incomplete sintax","0004")
                     window['salida'].Update(err,text_color='red')
                 else:
-
+                    i = 0
                     for j in lexemasXinstruccion:
-                        print (AnalizarInstruccion(j))
-                    window['salida'].Update('Compiled succesfully!',text_color='green')
-            for i in lexemasXinstruccion:
-                print("\n",i)
+                        err = AnalizarInstruccion(j,i)
+                        if err != None:
+                            window['salida'].Update(err,text_color='red')
+                            break
+                        i+=1
+
+                    if err == None:
+                        window['salida'].Update('Compiled succesfully!',text_color='green')    
+                       #print("\n",j)
     window.close()
 
 if __name__ == '__main__':

@@ -1,8 +1,10 @@
 import PySimpleGUI as sg
 import ArbolDlexemas as Arbol
 import Error
+import keyboard
 
 #variables globales
+output = ""
 
 joken_log = ["EQUAL","<",">","<=",">=","AND","OR","!="]
 
@@ -36,6 +38,12 @@ def separa_Instrucciones(codigo):
 def ComposicionLexica(codigo):
     return codigo.split(' ')
 
+def redo(event, text):
+    try:    # if nothing to redo will cause "_tkinter.TclError: nothing to redo"
+        text.edit_redo()
+    except:
+        pass
+
 def make_window():
     menu_def = [['&Nuevo', []],
                 ['&opciones', ['&Paste', ['Special', 'Normal', ], 'Undo'], ],
@@ -48,9 +56,9 @@ def make_window():
     ,[sg.Text('---------------------------------------------------CODE-------------------------------------------', justification='top', font=("Helvetica", 16), relief=sg.RELIEF_RIDGE, k='-TEXT HEADING-', enable_events=False)],
     [[sg.Button('COMPILAR'),sg.Button('EJECUTAR')],  [sg.Multiline(size=(45,15), expand_x=True, expand_y=True, k='CODE')]],
     [sg.Text('-----------------------------------------------OUTPUT----------------------------------------', justification='top', font=("Helvetica", 16), relief=sg.RELIEF_RIDGE, k='OUTPUT')],
-      [[sg.Multiline(size=(45,10), expand_x=True, expand_y=True, k='salida')]]]
+      [[sg.Multiline(size=(45,10), expand_x=True, expand_y=True, k='salida',disabled=True)]]]
     layout[-1].append(sg.Sizegrip()) 
-    window = sg.Window('J Retana k granados',layout,margins=(75,100),resizable=True)
+    window = sg.Window('J Retana k granados JOKEN',layout,margins=(85,100),resizable=True,return_keyboard_events=True)
     return window
 
 def remove_Carac_Muertos(the_list, val,val2,val3):
@@ -84,7 +92,7 @@ def IsVarType(lexema):
 def IsReservada(lexema):
     return Palabras_reservadas.FindLexema(lexema.upper())
 
-def IsVariable(lex):
+def IsVariable(lex):#retorna true si el identificador de variable existe
     return any(obj.identifier == lex for obj in variables_program)
 
 def LeerVariables(instruct):
@@ -99,12 +107,12 @@ def IsCondicional(instruct):
     return instruct[0] == "IF" or instruct[0] == "if" or instruct[0] == "If" or instruct[0] == "iF"
 
 def AsignarValue(identifier,valor):
+    global variables_program
     for i in range(len(variables_program)):
         if variables_program[i].identifier == identifier:
             variables_program[i].valor = valor
             variables_program[i].data_type = type(valor)
             print("valor asignado")
-
 
 def IsAsignacion(instruct):
     return IsVariable(instruct[0]) and instruct[1] == '='
@@ -116,7 +124,15 @@ def GetVariable(identifier):
             objeto = k
     return objeto
 
-
+def joken_print(instruct):
+    global output
+    for i in instruct:
+        if IsVariable(i):
+            variable = GetVariable(i)
+            output += variable.valor + '\n'
+        else:
+            output += i + ' '
+    print("joken_print...",output)
 
 def Resultado_Condicion(cond_array):
     v1 = None
@@ -171,7 +187,15 @@ def AnalizarInstruccion(instruct,j):
             if comas == 1:#condicional simple
                 salida = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
                 condicion = instruct[instruct.index(',')+1:len(instruct)-1]
-                print ('resultado ',Resultado_Condicion(condicion))
+                verdad = Resultado_Condicion(condicion)
+                print ('resultado ',verdad) 
+                if verdad :
+                    if salida[0] == 'print':
+                        print ('es print')
+                        if salida[1] != '(' or salida[-1] != ')':
+                            return Error.Error(j,"error found on if condition","sintax error",'jk005')
+                        joken_print(salida[2:len(salida)-1])
+
                 return None
             elif comas == 2:# compuesto
                 return None
@@ -179,22 +203,15 @@ def AnalizarInstruccion(instruct,j):
                 return Error.Error(j,"error found on if condition","sintax error",'jk005')
         else:
             return Error.Error(j,"error found on if condition","sintax error",'jk005')
-
     elif IsAsignacion(instruct):
         igual = instruct.index("=")
         val=None
         asignado = instruct[igual+1:len(instruct)]
+        print ('asignando...',*asignado)
         if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
             val = int(asignado[0])
-            AsignarValue(instruct[0],int(asignado[0]))
         elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
-            s = ""
-            for i in range(len(asignado)):
-                if i == 0 or i == len(asignado)-1:
-                    continue
-                else:
-                    s = s + asignado[i]
-            val=s
+            val = ' '.join(asignado)
             print("asigna string")
         elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
             val = asignado[0].upper() == 'TRUE'
@@ -203,20 +220,23 @@ def AnalizarInstruccion(instruct,j):
 
         AsignarValue(instruct[0],val)
 
-        print("Variables ",*variables_program)    
-        print("asignado: ",*asignado)
+        print("Variables desp de asignar",*variables_program)    
         
         return None
+    elif len(instruct) > 1 and instruct[1] == '(' or instruct[-1] == ')' and instruct[0] == 'print':
+            joken_print(instruct[2:len(instruct)-1])
+            #return Error.Error(j,"error found on print condition","sintax error",'jk005')
 
 def main():
     
     window = make_window()
     while True:
         event, values = window.read()
+        print(event)
     #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
-        elif event == 'COMPILAR':
+        elif event == 'COMPILAR' or event == '\r' and values['CODE'] != "":
             #variables_program.clear()
             instrucciones = separa_Instrucciones(values['CODE'])
             lexemasXinstruccion = list(map(ComposicionLexica,instrucciones))#separa cada instrucción en un array de lexemas
@@ -241,8 +261,17 @@ def main():
                         i+=1
 
                     if err == None:
-                        window['salida'].Update('Compiled succesfully!',text_color='green')    
+                        window['salida'].Update('Compiled succesfully!\n',text_color='green')    
                        #print("\n",j)
+        elif event == 'EJECUTAR':
+            print ("output...",output)
+            window['salida'].Update(output)
+        elif event == 'L:76' or event == 'l:76':
+            window['CODE'].Update('')
+        elif event == 'j:74' or event == 'J:74':
+            plantilla = "variables [ tipo_dato dato ]\nCODIGO....\nEND PROGRAM"
+            window['CODE'].Update(plantilla) 
+
     window.close()
 
 if __name__ == '__main__':

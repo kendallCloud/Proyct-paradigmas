@@ -1,7 +1,6 @@
 import PySimpleGUI as sg
 import ArbolDlexemas as Arbol
 import Error
-import keyboard
 
 #variables globales
 output = ""
@@ -106,6 +105,12 @@ def LeerVariables(instruct):
 def IsCondicional(instruct):
     return instruct[0] == "IF" or instruct[0] == "if" or instruct[0] == "If" or instruct[0] == "iF"
 
+def IsOperation(instruct):
+    return instruct[1] == "*" or instruct[1] == "/" or instruct[1] == "+" or instruct[1] == "-"
+
+def IsAsignacion(instruct):
+    return IsVariable(instruct[0]) and instruct[1] == '='
+
 def AsignarValue(identifier,valor):
     global variables_program
     for i in range(len(variables_program)):
@@ -113,9 +118,6 @@ def AsignarValue(identifier,valor):
             variables_program[i].valor = valor
             variables_program[i].data_type = type(valor)
             print("valor asignado")
-
-def IsAsignacion(instruct):
-    return IsVariable(instruct[0]) and instruct[1] == '='
 
 def GetVariable(identifier):
     objeto = None
@@ -133,6 +135,40 @@ def joken_print(instruct):
         else:
             output += i + ' '
     print("joken_print...",output)
+
+def Resultado_Operacion(operacion):
+    v1 = None
+    v2 = None
+    sale = None
+    global err
+    if IsVariable(operacion[0]):
+        v1 = GetVariable(operacion[0])
+    elif operacion[0].isnumeric():
+        v1 = Variable("",type(int),int(operacion[0]))
+
+    if IsVariable(operacion[2]):
+        v2 = GetVariable(operacion[2])
+    elif operacion[2].isnumeric():
+        v2 = Variable("",type(int),int(operacion[2])) 
+
+    if isinstance(v2.valor,int) and isinstance(v1.valor,int):
+        print ("realizando operacion matematica ...",operacion[0]+operacion[1]+operacion[2])
+        if operacion[1] == '*':
+             sale =  v1.valor * v2.valor
+        elif operacion[1] == '/':
+            if v2.valor == 0:
+                err = Error.Error(-1,"imposible dividir entre 0",'divided by 0','0078')
+                return None
+            sale = v1.valor / v2.valor
+        elif operacion[1] == '+':
+             sale =  v1.valor >= v2.valor
+        elif operacion[1] == '-':
+             sale = v1.valor - v2.valor
+    else:  
+        err = Error.Error(-1,"error en la operación matematica",'sintax error','0079')
+    print('resultado de la operacion...',sale)
+    return sale
+
 
 def Resultado_Condicion(cond_array):
     v1 = None
@@ -169,7 +205,7 @@ def Resultado_Condicion(cond_array):
             return  v1.valor == v2.valor
         elif cond_array[1] == '!=':
             return  v1.valor != v2.valor
-    elif isinstance(v2.valor,None) and isinstance(v1.valor,None): 
+    elif isinstance(v2.valor,type(None)) and isinstance(v1.valor,type(None)): 
         return True
 """"
 def Findoperator_logico(instruct):
@@ -206,7 +242,7 @@ def AnalizarInstruccion(instruct,j):
     elif IsAsignacion(instruct):
         igual = instruct.index("=")
         val=None
-        asignado = instruct[igual+1:len(instruct)]
+        asignado = instruct[igual+1:len(instruct)]# sub array despues del =
         print ('asignando...',*asignado)
         if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
             val = int(asignado[0])
@@ -217,6 +253,10 @@ def AnalizarInstruccion(instruct,j):
             val = asignado[0].upper() == 'TRUE'
         elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
             val = None
+        elif len(asignado) > 1 and IsOperation(asignado):
+            result = Resultado_Operacion(asignado)
+            if result != None:
+                val = result
 
         AsignarValue(instruct[0],val)
 
@@ -236,7 +276,7 @@ def main():
     #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
-        elif event == 'COMPILAR' or event == '\r' and values['CODE'] != "":
+        elif (event == 'COMPILAR' or event == 'e:69') and values['CODE'] != "":
             #variables_program.clear()
             instrucciones = separa_Instrucciones(values['CODE'])
             lexemasXinstruccion = list(map(ComposicionLexica,instrucciones))#separa cada instrucción en un array de lexemas

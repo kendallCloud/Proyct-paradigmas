@@ -12,3 +12,13 @@ n2 = 4
 if [ print ( "n2 es mayor" ) , n1 < n2 , print ( "n2 es menor") ]
 END PROGRAM
 ---------------------------------------------
+
+variables [ string cadena int n1 int n2 ]
+n1 = 9 - 6
+n2 = 4 + 2
+print ( n2 )
+if [ n2 = 9 / 9  , n1 < n2 ]
+
+print ( n2 )
+
+END PROGRAM

@@ -111,12 +111,32 @@ def IsOperation(instruct):
 def IsAsignacion(instruct):
     return IsVariable(instruct[0]) and instruct[1] == '='
 
-def AsignarValue(identifier,valor):
+def AsignarValue(instruct):
+    identifier = instruct[0]
+    igual = instruct.index("=")
+    val=None
+    asignado = instruct[igual+1:len(instruct)]# sub array despues del =
+    print ('asignando...',*asignado)
+    if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
+        val = int(asignado[0])
+    elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
+        val = ' '.join(asignado)
+        print("asigna string")
+    elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
+        val = asignado[0].upper() == 'TRUE'
+    elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
+        val = None
+    elif len(asignado) > 1 and IsOperation(asignado):
+        result = Resultado_Operacion(asignado)
+        if result != None:
+            val = result
+
+
     global variables_program
     for i in range(len(variables_program)):
         if variables_program[i].identifier == identifier:
-            variables_program[i].valor = valor
-            variables_program[i].data_type = type(valor)
+            variables_program[i].valor = val
+            variables_program[i].data_type = type(val)
             print("valor asignado")
 
 def GetVariable(identifier):
@@ -131,7 +151,10 @@ def joken_print(instruct):
     for i in instruct:
         if IsVariable(i):
             variable = GetVariable(i)
-            output += variable.valor + '\n'
+            if not isinstance(variable.valor,str):
+                output += str(variable.valor) + '\n'
+            else: 
+                output += variable.valor + '\n'
         else:
             output += i + ' '
     print("joken_print...",output)
@@ -159,9 +182,9 @@ def Resultado_Operacion(operacion):
             if v2.valor == 0:
                 err = Error.Error(-1,"imposible dividir entre 0",'divided by 0','0078')
                 return None
-            sale = v1.valor / v2.valor
+            sale = int(v1.valor / v2.valor)
         elif operacion[1] == '+':
-             sale =  v1.valor >= v2.valor
+             sale =  v1.valor + v2.valor
         elif operacion[1] == '-':
              sale = v1.valor - v2.valor
     else:  
@@ -223,18 +246,51 @@ def AnalizarInstruccion(instruct,j):
             if comas == 1:#condicional simple
                 salida = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
                 condicion = instruct[instruct.index(',')+1:len(instruct)-1]
+                print ('condicion de if...',*condicion)
+                print ('salida de if...',*salida)
                 verdad = Resultado_Condicion(condicion)
-                print ('resultado ',verdad) 
+                print ('resultado condicion ',verdad) 
                 if verdad :
                     if salida[0] == 'print':
                         print ('es print')
                         if salida[1] != '(' or salida[-1] != ')':
                             return Error.Error(j,"error found on if condition","sintax error",'jk005')
                         joken_print(salida[2:len(salida)-1])
+                    elif  IsAsignacion(salida):
+                        print('asignacion de variable dentro de if')
+                        AsignarValue(salida)
+
 
                 return None
             elif comas == 2:# compuesto
-                return None
+
+                ultima_coma = (len(instruct) - 1 - instruct[::-1].index(','))
+                primer_coma = instruct.index(',')
+                salida_true = instruct[2:primer_coma]# del inicio a la primera coma es la salida si se cumple la condicion
+                salida_false = instruct[ultima_coma+1:len(instruct) -1]
+                salida = None
+                condicion = instruct[primer_coma+1:ultima_coma]
+                print ('condicion de if...',*condicion)
+                print ('salida de true...',*salida_true)
+                print ('salida de false...',*salida_false)
+                verdad = Resultado_Condicion(condicion)
+                print ('resultado condicion ',verdad) 
+                if verdad :
+                    salida = salida_true
+                else :
+                    salida = salida_false
+
+                if salida != None:
+                    if salida[0] == 'print':
+                        print ('es print')
+                        if salida[1] != '(' or salida[-1] != ')':
+                            return Error.Error(j,"error found on if condition","sintax error",'jk005')
+                        joken_print(salida[2:len(salida)-1])
+                    elif  IsAsignacion(salida):
+                        print('asignacion de variable dentro de if')
+                        AsignarValue(salida)
+                    return None
+                return Error.Error(j,"could'nt get output on if condition","No output",'jk0010')
             else:
                 return Error.Error(j,"error found on if condition","sintax error",'jk005')
         else:
@@ -258,26 +314,31 @@ def AnalizarInstruccion(instruct,j):
             if result != None:
                 val = result
 
-        AsignarValue(instruct[0],val)
+        AsignarValue(instruct)
 
         print("Variables desp de asignar",*variables_program)    
         
         return None
-    elif len(instruct) > 1 and instruct[1] == '(' or instruct[-1] == ')' and instruct[0] == 'print':
+    elif len(instruct) > 1 and instruct[1] == '(' or instruct[-1] == ')' and instruct[0].upper() == 'PRINT':
             joken_print(instruct[2:len(instruct)-1])
-            #return Error.Error(j,"error found on print condition","sintax error",'jk005')
+    elif instruct[0].upper() == 'WHILE':
+          
 
 def main():
     
     window = make_window()
     while True:
         event, values = window.read()
-        print(event)
+        print(type(event))
     #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
-        elif (event == 'COMPILAR' or event == 'e:69') and values['CODE'] != "":
-            #variables_program.clear()
+        elif (event == 'COMPILAR' or event == 'c:67') and values['CODE'] != "":
+            global output
+            output = ""
+            global variables_program
+            variables_program.clear()
+
             instrucciones = separa_Instrucciones(values['CODE'])
             lexemasXinstruccion = list(map(ComposicionLexica,instrucciones))#separa cada instrucción en un array de lexemas
             lexemasXinstruccion = LimpiarCodigo(lexemasXinstruccion)# elimina espacios en blanco o muertos
@@ -303,13 +364,13 @@ def main():
                     if err == None:
                         window['salida'].Update('Compiled succesfully!\n',text_color='green')    
                        #print("\n",j)
-        elif event == 'EJECUTAR':
+        elif event == 'EJECUTAR' or event == 'e:69':
             print ("output...",output)
             window['salida'].Update(output)
         elif event == 'L:76' or event == 'l:76':
             window['CODE'].Update('')
         elif event == 'j:74' or event == 'J:74':
-            plantilla = "variables [ tipo_dato dato ]\nCODIGO....\nEND PROGRAM"
+            plantilla = "variables [ tipo_dato dato ]\nCODE....\nEND PROGRAM"
             window['CODE'].Update(plantilla) 
 
     window.close()

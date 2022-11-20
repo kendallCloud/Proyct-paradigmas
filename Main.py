@@ -107,6 +107,9 @@ def IsCondicional(instruct):
 def IsWhile(instruct):
     return instruct[0].upper() == "WHILE"
 
+def IsFor(instruct):
+    return instruct[0].upper() == 'FOR'
+
 def IsOperation(instruct):
     return instruct[1] == "*" or instruct[1] == "/" or instruct[1] == "+" or instruct[1] == "-"
 
@@ -274,11 +277,9 @@ def Ejecutar_func(iden,args):
                 break
             i+=1
 
-
-
-
 def AnalizarInstruccion(instruct,linea):
     global lexemasXinstruccion
+    global variables_program
     print('analizando linea ',linea)
     if(IsCondicional(instruct)):
         if instruct[1] == "[" and instruct[-1] == ']':
@@ -328,24 +329,6 @@ def AnalizarInstruccion(instruct,linea):
         else:
             return Error.Error(linea,"error found on if condition","sintax error",'jk005')
     elif IsAsignacion(instruct):
-        igual = instruct.index("=")
-        val=None
-        asignado = instruct[igual+1:len(instruct)]# sub array despues del =
-        print ('asignando...',*asignado)
-        if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
-            val = int(asignado[0])
-        elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
-            val = ' '.join(asignado)
-            print("asigna string")
-        elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
-            val = asignado[0].upper() == 'TRUE'
-        elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
-            val = None
-        elif len(asignado) > 1 and IsOperation(asignado):
-            result = Resultado_Operacion(asignado)
-            if result != None:
-                val = result
-
         AsignarValue(instruct)
 
         print("Variables desp de asignar",*variables_program)    
@@ -353,15 +336,50 @@ def AnalizarInstruccion(instruct,linea):
         return None
     elif len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')' and instruct[0].upper() == 'PRINT':
             joken_print(instruct[2:len(instruct)-1])
-    elif instruct[0].upper() == 'WHILE':# while [ do,condition ]
+
+
+    elif IsWhile(instruct):# while [ do,condition ]
         if instruct[1] == "[" and instruct[-1] == ']':
                 do_this = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
                 condicion = instruct[instruct.index(',')+1:len(instruct)-1]
                 print ('ejecuta mientras...',*condicion)
                 print ('a ejecutar en cada iteracion ',*do_this) 
+                error = None
                 while Resultado_Condicion(condicion):
-                    AnalizarInstruccion(do_this,linea)
-    elif instruct[0].upper() == 'FUN':
+                    error = AnalizarInstruccion(do_this,linea)
+                    if error != None: break
+                return error 
+                
+
+
+    elif IsFor(instruct):# for [ do ; declare iterador ,condition, increase]
+        print ('entra al for')
+        if instruct[1] == "[" and instruct[-1] == ']':
+                ultima_coma = (len(instruct) - 1 - instruct[::-1].index(','))
+                primer_coma = instruct.index(',')
+                puntoYcoma = instruct.index(';')
+                do_this = instruct[2:puntoYcoma]
+                var_itera = instruct[puntoYcoma+1:primer_coma]# del inicio a la primera coma es la declaracion del iterador
+                modif_iter = instruct[ultima_coma+1:len(instruct) -1]
+                condicion = instruct[primer_coma+1:ultima_coma]
+                print ('do_this |', do_this, 'condicion',condicion, '| modif_iter ', modif_iter ,'|var_itera ',var_itera)
+
+                if not IsReservada(var_itera[0]) and not IsVariable(var_itera[0]) and not IsFuncion(var_itera[0]):
+                    variables_program.append(Variable.Variable(var_itera[0],int,None))                
+                    if IsAsignacion(var_itera):
+                        AsignarValue(var_itera)
+
+                    error = None
+             
+                while Resultado_Condicion(condicion):
+                    error = AnalizarInstruccion(do_this,linea)
+                    AsignarValue(modif_iter)
+                    if error != None: break
+              
+
+                print ('for terminado')
+                return error          
+    elif instruct[0].upper() == 'FUN':#DECLARA FUNCION
         print ("es funcion")
         if instruct[2] == '[' and instruct[-1] == ']' and not IsVariable(instruct[1]) and not IsReservada(instruct[1]):
             global functions_program
@@ -385,8 +403,6 @@ def AnalizarInstruccion(instruct,linea):
     elif IsFuncion(instruct[0]) and len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')':
         print ('llamando función ',instruct[0])
         Ejecutar_func(instruct[0],instruct[2:len(instruct)-1])
-
-
 
 def main():
     global lexemasXinstruccion

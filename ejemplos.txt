@@ -43,3 +43,7 @@ n = 0
     funcion_while ( 5 )
 
 END PROGRAM
+------------------------------------------------
+variables [ int n ]
+    for [ print ( i ) ; i = 2 , i < 200 , i = i * 2 ]
+END PROGRAM

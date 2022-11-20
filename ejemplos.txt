@@ -1,7 +1,7 @@
 variables [ string sms ]
  
 sms = " hola mundo "
-print( sms )
+print ( sms )
 
 END PROGRAM
 --------------------------------------------
@@ -20,5 +20,26 @@ print ( n2 )
 if [ n2 = 9 / 9  , n1 < n2 ]
 
 print ( n2 )
+
+END PROGRAM
+
+---------------------------------------------
+variables [ int n ]
+n = 0
+print ( n )
+while [ n = n + 1 , n < 10 ]
+
+print ( n )
+
+END PROGRAM
+------------------------------------------------
+variables [ int n ]
+n = 0
+    fun funcion_while [ n ]
+        print ( n )
+        while [ n = n + 1 , n < 10 ]
+        print ( n )
+    ;
+    funcion_while ( 5 )
 
 END PROGRAM

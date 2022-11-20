@@ -1,6 +1,9 @@
 import PySimpleGUI as sg
 import ArbolDlexemas as Arbol
 import Error
+import Variable
+import Function
+import numpy as np
 
 #variables globales
 output = ""
@@ -16,16 +19,10 @@ for i in Joken_reserv:
 instrucciones = []
 lexemasXinstruccion = []
 #----------------------------------------------------------------------------
-class Variable:
-  def __init__(self, identifier,data_type,valor):
-        self.data_type = data_type
-        self.valor = valor
-        self.identifier = identifier
-  def __str__(self):
-    return f"{self.identifier}//{self.data_type}//{self.valor}"
 
 Joken_types = Arbol.AVLTree()
 variables_program = []
+functions_program = []
 
 Joken_tipos = ["STRING","FLOAT","INT","BOOL","NULL","ARRAY","LIST"]
 for i in Joken_tipos:
@@ -36,12 +33,6 @@ def separa_Instrucciones(codigo):
 
 def ComposicionLexica(codigo):
     return codigo.split(' ')
-
-def redo(event, text):
-    try:    # if nothing to redo will cause "_tkinter.TclError: nothing to redo"
-        text.edit_redo()
-    except:
-        pass
 
 def make_window():
     menu_def = [['&Nuevo', []],
@@ -94,16 +85,27 @@ def IsReservada(lexema):
 def IsVariable(lex):#retorna true si el identificador de variable existe
     return any(obj.identifier == lex for obj in variables_program)
 
+def IsFuncion(lex):#retorna true si el identificador de funcion existe
+    return any(obj.identifier == lex for obj in functions_program)
+
 def LeerVariables(instruct):
+    """
+    It takes a list of strings and creates a list of variables
+    
+    :param instruct: The instruction that is being read
+    """
     if instruct[1] == '[' and instruct[-1] == ']' and  len(instruct) > 3:
         index = 2
         while index < len(instruct)-1:
             if IsVarType(instruct[index]) and not IsReservada(instruct[index+1]) and not IsVarType(instruct[index+1]):
-                variables_program.append(Variable(instruct[index+1],instruct[index],None))
+                variables_program.append(Variable.Variable(instruct[index+1],instruct[index],None))
             index+=2
 
 def IsCondicional(instruct):
-    return instruct[0] == "IF" or instruct[0] == "if" or instruct[0] == "If" or instruct[0] == "iF"
+    return instruct[0].upper() == "IF"
+
+def IsWhile(instruct):
+    return instruct[0].upper() == "WHILE"
 
 def IsOperation(instruct):
     return instruct[1] == "*" or instruct[1] == "/" or instruct[1] == "+" or instruct[1] == "-"
@@ -146,6 +148,13 @@ def GetVariable(identifier):
             objeto = k
     return objeto
 
+def GetFunction(identifier):
+    objeto = None
+    for k in functions_program:
+        if k.identifier == identifier:
+            objeto = k
+    return objeto
+
 def joken_print(instruct):
     global output
     for i in instruct:
@@ -167,12 +176,12 @@ def Resultado_Operacion(operacion):
     if IsVariable(operacion[0]):
         v1 = GetVariable(operacion[0])
     elif operacion[0].isnumeric():
-        v1 = Variable("",type(int),int(operacion[0]))
+        v1 = Variable.Variable("",type(int),int(operacion[0]))
 
     if IsVariable(operacion[2]):
         v2 = GetVariable(operacion[2])
     elif operacion[2].isnumeric():
-        v2 = Variable("",type(int),int(operacion[2])) 
+        v2 = Variable.Variable("",type(int),int(operacion[2])) 
 
     if isinstance(v2.valor,int) and isinstance(v1.valor,int):
         print ("realizando operacion matematica ...",operacion[0]+operacion[1]+operacion[2])
@@ -199,16 +208,16 @@ def Resultado_Condicion(cond_array):
     if IsVariable(cond_array[0]):
         v1 = GetVariable(cond_array[0])
     elif cond_array[0].isnumeric():
-        v1 = Variable("",type(int),int(cond_array[0]))
+        v1 = Variable.Variable("",type(int),int(cond_array[0]))
     elif cond_array[0].upper() == "TRUE":
-        v1 = Variable("",type(bool),True)
+        v1 = Variable.Variable("",type(bool),True)
     elif cond_array[0].upper() == "FALSE":
-        v1 = Variable("",type(bool),False)
+        v1 = Variable.Variable("",type(bool),False)
 
     if IsVariable(cond_array[2]):
         v2 = GetVariable(cond_array[2])
     elif cond_array[2].isnumeric():
-        v2 = Variable("",type(int),int(cond_array[2]))    
+        v2 = Variable.Variable("",type(int),int(cond_array[2]))    
 
     if isinstance(v2.valor,int) and isinstance(v1.valor,int):#si es entero
         if cond_array[1] == '<':
@@ -236,9 +245,41 @@ def Findoperator_logico(instruct):
     for i in instruct:
         if i in joken_log and i:
             i+=1
-"""    
-def AnalizarInstruccion(instruct,j):
-    print('analizando linea ',j)
+"""
+
+def finDfunction(index):
+    i = index
+    print ("index {} len {}",index,len(lexemasXinstruccion)-1)
+    for i, elem in enumerate(lexemasXinstruccion):
+        print (lexemasXinstruccion[i][0])
+        if elem[0] == ';':
+            return i
+    return -1
+
+def Ejecutar_func(iden,args):
+    global variables_program
+    fn = GetFunction(iden)
+    if fn != None and len(fn.args) == len(args):
+        for f, a in zip(fn.args,args):
+            if a.isnumeric():
+             variables_program.append(Variable.Variable(f,int,int(a)))
+            else:
+             variables_program.append(Variable.Variable(f,type(a),a))
+    
+        i = 0
+        for j in fn.codigo:
+            err = AnalizarInstruccion(j,i)
+            if err != None:
+                return err
+                break
+            i+=1
+
+
+
+
+def AnalizarInstruccion(instruct,linea):
+    global lexemasXinstruccion
+    print('analizando linea ',linea)
     if(IsCondicional(instruct)):
         if instruct[1] == "[" and instruct[-1] == ']':
             print('if correcto')
@@ -254,13 +295,11 @@ def AnalizarInstruccion(instruct,j):
                     if salida[0] == 'print':
                         print ('es print')
                         if salida[1] != '(' or salida[-1] != ')':
-                            return Error.Error(j,"error found on if condition","sintax error",'jk005')
+                            return Error.Error(linea,"error found on if condition","sintax error",'jk005')
                         joken_print(salida[2:len(salida)-1])
                     elif  IsAsignacion(salida):
                         print('asignacion de variable dentro de if')
                         AsignarValue(salida)
-
-
                 return None
             elif comas == 2:# compuesto
 
@@ -281,20 +320,13 @@ def AnalizarInstruccion(instruct,j):
                     salida = salida_false
 
                 if salida != None:
-                    if salida[0] == 'print':
-                        print ('es print')
-                        if salida[1] != '(' or salida[-1] != ')':
-                            return Error.Error(j,"error found on if condition","sintax error",'jk005')
-                        joken_print(salida[2:len(salida)-1])
-                    elif  IsAsignacion(salida):
-                        print('asignacion de variable dentro de if')
-                        AsignarValue(salida)
+                    AnalizarInstruccion(salida,linea)
                     return None
-                return Error.Error(j,"could'nt get output on if condition","No output",'jk0010')
+                return Error.Error(linea,"could'nt get output on if condition","No output",'jk0010')
             else:
-                return Error.Error(j,"error found on if condition","sintax error",'jk005')
+                return Error.Error(linea,"error found on if condition","sintax error",'jk005')
         else:
-            return Error.Error(j,"error found on if condition","sintax error",'jk005')
+            return Error.Error(linea,"error found on if condition","sintax error",'jk005')
     elif IsAsignacion(instruct):
         igual = instruct.index("=")
         val=None
@@ -319,17 +351,48 @@ def AnalizarInstruccion(instruct,j):
         print("Variables desp de asignar",*variables_program)    
         
         return None
-    elif len(instruct) > 1 and instruct[1] == '(' or instruct[-1] == ')' and instruct[0].upper() == 'PRINT':
+    elif len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')' and instruct[0].upper() == 'PRINT':
             joken_print(instruct[2:len(instruct)-1])
-    elif instruct[0].upper() == 'WHILE':
-          
+    elif instruct[0].upper() == 'WHILE':# while [ do,condition ]
+        if instruct[1] == "[" and instruct[-1] == ']':
+                do_this = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
+                condicion = instruct[instruct.index(',')+1:len(instruct)-1]
+                print ('ejecuta mientras...',*condicion)
+                print ('a ejecutar en cada iteracion ',*do_this) 
+                while Resultado_Condicion(condicion):
+                    AnalizarInstruccion(do_this,linea)
+    elif instruct[0].upper() == 'FUN':
+        print ("es funcion")
+        if instruct[2] == '[' and instruct[-1] == ']' and not IsVariable(instruct[1]) and not IsReservada(instruct[1]):
+            global functions_program
+            global err
+            cierra = finDfunction(linea)
+            params = instruct[3:len(instruct)-1]
+            obj_params = []
+            
+            for i in params:
+                obj_params.append(Variable.Variable(i,'',''))
+            print('parametros ',*params)
+
+            if cierra == -1:
+                return Error.Error(linea,'function not closed whith the corresponding ;','impcomplete sintax','j0017')
+            else:
+                cod_function = lexemasXinstruccion[linea+1:cierra]
+                del lexemasXinstruccion[linea+1:cierra]
+                print ('codigo en la funcion :',*cod_function)
+                functions_program.append(Function.Function(instruct[1],instruct[3:len(instruct)-1],cod_function))
+                print (*functions_program)
+    elif IsFuncion(instruct[0]) and len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')':
+        print ('llamando función ',instruct[0])
+        Ejecutar_func(instruct[0],instruct[2:len(instruct)-1])
+
+
 
 def main():
-    
+    global lexemasXinstruccion
     window = make_window()
     while True:
         event, values = window.read()
-        print(type(event))
     #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
@@ -363,7 +426,6 @@ def main():
 
                     if err == None:
                         window['salida'].Update('Compiled succesfully!\n',text_color='green')    
-                       #print("\n",j)
         elif event == 'EJECUTAR' or event == 'e:69':
             print ("output...",output)
             window['salida'].Update(output)
@@ -372,9 +434,7 @@ def main():
         elif event == 'j:74' or event == 'J:74':
             plantilla = "variables [ tipo_dato dato ]\nCODE....\nEND PROGRAM"
             window['CODE'].Update(plantilla) 
-
     window.close()
-
 if __name__ == '__main__':
-    sg.theme('SystemDefault')
+    sg.theme('Dark')
     main()

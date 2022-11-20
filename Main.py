@@ -135,6 +135,8 @@ def AsignarValue(instruct):
         result = Resultado_Operacion(asignado)
         if result != None:
             val = result
+    elif asignado[0].upper() == '-' and asignado[1].isnumeric():
+        val = 0 - int(asignado[1])
 
 
     global variables_program

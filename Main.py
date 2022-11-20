@@ -24,7 +24,7 @@ Joken_types = Arbol.AVLTree()
 variables_program = []
 functions_program = []
 
-Joken_tipos = ["STRING","FLOAT","INT","BOOL","NULL","ARRAY","LIST"]
+Joken_tipos = ["STRING","CHAR","INT","BOOL","NULL","ARRAY","LIST"]
 for i in Joken_tipos:
     Joken_types.insert(i)
 
@@ -98,6 +98,7 @@ def LeerVariables(instruct):
         index = 2
         while index < len(instruct)-1:
             if IsVarType(instruct[index]) and not IsReservada(instruct[index+1]) and not IsVarType(instruct[index+1]):
+                
                 variables_program.append(Variable.Variable(instruct[index+1],instruct[index],None))
             index+=2
 
@@ -137,6 +138,24 @@ def AsignarValue(instruct):
             val = result
     elif asignado[0].upper() == '-' and asignado[1].isnumeric():
         val = 0 - int(asignado[1])
+    elif asignado[0].upper() == '[' and asignado[-1].upper() == ']':#es lista
+        joken_list = asignado[1:len(asignado)-1]
+        while ',' in joken_list: joken_list.remove(',')
+        nueva = []
+        for x in joken_list:
+            if x.isnumeric():
+                nueva.append(int(x))
+            elif x.upper() == 'TRUE' or x.upper() == 'FALSE':
+                nueva.append(x.upper() == 'TRUE')
+            elif x.upper() == 'NULL':
+                nueva.append(None)
+            elif IsVariable(x):
+                nueva.append(GetVariable(x).valor)
+            else :
+                nueva.append(x)
+        val = nueva
+
+                
 
 
     global variables_program
@@ -153,6 +172,7 @@ def GetVariable(identifier):
             objeto = k
     return objeto
 
+
 def GetFunction(identifier):
     objeto = None
     for k in functions_program:
@@ -167,6 +187,10 @@ def joken_print(instruct):
             variable = GetVariable(i)
             if not isinstance(variable.valor,str):
                 output += str(variable.valor) + '\n'
+
+            elif variable.valor == None:
+                output += 'null' + '\n'
+            
             else: 
                 output += variable.valor + '\n'
         else:
@@ -443,7 +467,7 @@ def main():
                         i+=1
 
                     if err == None:
-                        window['salida'].Update('Compiled succesfully!\n',text_color='green')    
+                        window['salida'].Update('Compiled succesfully!\n',text_color='lime green')    
         elif event == 'EJECUTAR' or event == 'e:69':
             print ("output...",output)
             window['salida'].Update(output)

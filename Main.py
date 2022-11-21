@@ -124,47 +124,53 @@ def AsignarValue(instruct):
     val=None
     asignado = instruct[igual+1:len(instruct)]# sub array despues del =
     print ('asignando...',*asignado)
-    if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
-        val = int(asignado[0])
-    elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
-        val = ' '.join(asignado)
-        print("asigna string")
-    elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
-        val = asignado[0].upper() == 'TRUE'
-    elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
-        val = None
-    elif len(asignado) > 1 and IsOperation(asignado):
-        result = Resultado_Operacion(asignado)
-        if result != None:
-            val = result
-    elif asignado[0].upper() == '-' and asignado[1].isnumeric():
-        val = 0 - int(asignado[1])
-    elif asignado[0].upper() == '[' and asignado[-1].upper() == ']':#es lista
-        joken_list = asignado[1:len(asignado)-1]
-        while ',' in joken_list: joken_list.remove(',')
-        nueva = []
-        for x in joken_list:
-            if x.isnumeric():
-                nueva.append(int(x))
-            elif x.upper() == 'TRUE' or x.upper() == 'FALSE':
-                nueva.append(x.upper() == 'TRUE')
-            elif x.upper() == 'NULL':
-                nueva.append(None)
-            elif IsVariable(x):
-                nueva.append(GetVariable(x).valor)
-            else :
-                nueva.append(x)
-        val = nueva
+    if asignado: #no vacia
+        if len(asignado) == 1 and asignado[0].isnumeric():#asigna un numero
+            val = int(asignado[0])
+        elif len(asignado) > 1 and asignado[0] == '"' and asignado[-1] == '"':#asigna string
+            val = ' '.join(asignado)
+            print("asigna string")
+        elif len(asignado) == 1 and not asignado[0].isnumeric() and asignado[0].upper() == 'TRUE' or asignado[0].upper() == 'FALSE':
+            val = asignado[0].upper() == 'TRUE'
+        elif len(asignado) == 1 and asignado[0].upper() == 'NULL':
+            val = None
+        elif len(asignado) > 1 and IsOperation(asignado):
+            result = Resultado_Operacion(asignado)
+            if result != None:
+                val = result
+            else:
+                return Error.Error(-1,"error found on operation","sintax error",'jk025')
 
-                
-
-
-    global variables_program
-    for i in range(len(variables_program)):
-        if variables_program[i].identifier == identifier:
-            variables_program[i].valor = val
-            variables_program[i].data_type = type(val)
-            print("valor asignado")
+        elif asignado[0].upper() == '-' and asignado[1].isnumeric():
+            val = 0 - int(asignado[1])
+        elif asignado[0].upper() == '[' and asignado[-1].upper() == ']':#es lista
+            joken_list = asignado[1:len(asignado)-1]
+            while ',' in joken_list: joken_list.remove(',')
+            nueva = []
+            for x in joken_list:
+                if x.isnumeric():
+                    nueva.append(int(x))
+                elif x.upper() == 'TRUE' or x.upper() == 'FALSE':
+                    nueva.append(x.upper() == 'TRUE')
+                elif x.upper() == 'NULL':
+                    nueva.append(None)
+                elif IsVariable(x):
+                    nueva.append(GetVariable(x).valor)
+                else :
+                    nueva.append(x)
+            val = nueva
+        else:
+            return Error.Error(-1,"error found on asignation","sintax error",'jk025')
+        global variables_program
+        for i in range(len(variables_program)):
+            if variables_program[i].identifier == identifier:
+                variables_program[i].valor = val
+                variables_program[i].data_type = type(val)
+                print("valor asignado")
+        
+    else:
+        return Error.Error(-1,"error found on asignation","sintax error",'jk025')
+        
 
 def GetVariable(identifier):
     objeto = None
@@ -217,21 +223,16 @@ def Resultado_Operacion(operacion):
         print ("realizando operacion matematica ...",operacion[0]+operacion[1]+operacion[2])
         if operacion[1] == '*':
              sale =  v1.valor * v2.valor
-        elif operacion[1] == '/':
-            if v2.valor == 0:
-                err = Error.Error(-1,"imposible dividir entre 0",'divided by 0','0078')
-                return None
-            sale = int(v1.valor / v2.valor)
+        elif operacion[1] == '/' and v2.valor != 0:
+            sale = v1.valor / v2.valor
         elif operacion[1] == '+':
              sale =  v1.valor + v2.valor
         elif operacion[1] == '-':
              sale = v1.valor - v2.valor
     else:  
-        err = Error.Error(-1,"error en la operación matematica",'sintax error','0079')
+        err = Error.Error(-1,"error en la operación matematica",'sintax error','jk0079')
     print('resultado de la operacion...',sale)
     return sale
-
-
 def Resultado_Condicion(cond_array):
     v1 = None
     v2 = None
@@ -320,14 +321,7 @@ def AnalizarInstruccion(instruct,linea):
                 verdad = Resultado_Condicion(condicion)
                 print ('resultado condicion ',verdad) 
                 if verdad :
-                    if salida[0] == 'print':
-                        print ('es print')
-                        if salida[1] != '(' or salida[-1] != ')':
-                            return Error.Error(linea,"error found on if condition","sintax error",'jk005')
-                        joken_print(salida[2:len(salida)-1])
-                    elif  IsAsignacion(salida):
-                        print('asignacion de variable dentro de if')
-                        AsignarValue(salida)
+                    return AnalizarInstruccion(salida,linea)
                 return None
             elif comas == 2:# compuesto
 
@@ -356,15 +350,17 @@ def AnalizarInstruccion(instruct,linea):
         else:
             return Error.Error(linea,"error found on if condition","sintax error",'jk005')
     elif IsAsignacion(instruct):
-        AsignarValue(instruct)
+        if AsignarValue(instruct) != None:
+            return Error.Error(linea,"error found on asignation","sintax error",'jk015')
 
         print("Variables desp de asignar",*variables_program)    
         
         return None
-    elif len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')' and instruct[0].upper() == 'PRINT':
-            joken_print(instruct[2:len(instruct)-1])
-
-
+    elif instruct[0].upper() == 'PRINT':
+            if len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')':     
+                joken_print(instruct[2:len(instruct)-1])
+            else:
+                return Error.Error(linea,"error found on print function","sintax error",'jk005')
     elif IsWhile(instruct):# while [ do, condition ]
         error = None
         if instruct[1] == "[" and instruct[-1] == ']':
@@ -413,14 +409,16 @@ def AnalizarInstruccion(instruct,linea):
                 if not IsReservada(var_itera[0]) and not IsVariable(var_itera[0]) and not IsFuncion(var_itera[0]):
                     variables_program.append(Variable.Variable(var_itera[0],int,None))                
                     if IsAsignacion(var_itera):
-                        AsignarValue(var_itera)
+                        if AsignarValue(var_itera) != None:
+                            return Error.Error(linea,"error found on asignation","sintax error",'jk015')
 
                     error = None
                 while Resultado_Condicion(condicion):
                     print ('ejecutando ',do_this)
                     error = AnalizarInstruccion(do_this,linea)
-                    AsignarValue(modif_iter)
-                    if error != None: break           
+                    if AsignarValue(modif_iter) != None:
+                            return Error.Error(linea,"error found on asignation","sintax error",'jk015')
+                    if error != None: break          
 
                 print ('for terminado')
 

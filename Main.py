@@ -24,7 +24,7 @@ Joken_types = Arbol.AVLTree()
 variables_program = []
 functions_program = []
 
-Joken_tipos = ["STRING","CHAR","INT","BOOL","NULL","ARRAY","LIST"]
+Joken_tipos = ["STRING","CHAR","INT","BOOL","NULL","LIST"]
 for i in Joken_tipos:
     Joken_types.insert(i)
 
@@ -40,7 +40,7 @@ def make_window():
 
     menu_def = [
                 ['&Opciones',['Palabras reservadas',Joken_reserv,
-                              'Sintaxis',['control',["condicionales",condicionales],["bucles",bucles],'funciones','operaciones'], 'Command &3', 'Command &4']],
+                              'Sintaxis',['control',["condicionales",condicionales],["bucles",bucles],'funciones','operaciones'],'Semantica','tipos de datos',Joken_tipos]],
                 ['&Help', '&About']]
 
     layout = [ [sg.Menu(menu_def,tearoff=True)] 
@@ -365,23 +365,37 @@ def AnalizarInstruccion(instruct,linea):
             joken_print(instruct[2:len(instruct)-1])
 
 
-    elif IsWhile(instruct):# while [ do,condition ]
+    elif IsWhile(instruct):# while [ do, condition ]
+        error = None
         if instruct[1] == "[" and instruct[-1] == ']':
                 do_this = instruct[2:instruct.index(',')]# del inicio a la primera coma es la salida si se cumple la condicion
                 condicion = instruct[instruct.index(',')+1:len(instruct)-1]
+
+                if ';' in do_this:
+                    do_this = ' '.join(do_this)
+                    do_this = do_this.split(';')
+                    aux=[]
+                    for d in do_this:
+                        aux.append(d.split(' '))
+                    do_this = aux
+
+                    while Resultado_Condicion(condicion):
+                        for l in do_this:
+                            error = AnalizarInstruccion(l,linea)
+                            if error != None: break
+
                 print ('ejecuta mientras...',*condicion)
                 print ('a ejecutar en cada iteracion ',*do_this) 
-                error = None
                 while Resultado_Condicion(condicion):
                     error = AnalizarInstruccion(do_this,linea)
                     if error != None: break
-                return error 
-                
+        else:
+                error = Error.Error(linea,"error found on while loop","sintax error",'jk005')
 
-
+        return error 
     elif IsFor(instruct):# for [ do ; declare iterador ,condition, increase]
         print ('entra al for')
-        if instruct[1] == "[" and instruct[-1] == ']':
+        if instruct[1] == "[" and instruct[-1] == "]":
                 ultima_coma = (len(instruct) - 1 - instruct[::-1].index(','))
                 primer_coma = instruct.index(',')
                 puntoYcoma = instruct.index(';')
@@ -389,7 +403,7 @@ def AnalizarInstruccion(instruct,linea):
                 var_itera = instruct[puntoYcoma+1:primer_coma]# del inicio a la primera coma es la declaracion del iterador
                 modif_iter = instruct[ultima_coma+1:len(instruct) -1]
                 condicion = instruct[primer_coma+1:ultima_coma]
-                print ('do_this |', do_this, 'condicion',condicion, '| modif_iter ', modif_iter ,'|var_itera ',var_itera)
+                print ('do_this | ', do_this, 'condicion',condicion, '| modif_iter ', modif_iter ,'|var_itera ',var_itera)
 
                 if not IsReservada(var_itera[0]) and not IsVariable(var_itera[0]) and not IsFuncion(var_itera[0]):
                     variables_program.append(Variable.Variable(var_itera[0],int,None))                
@@ -397,15 +411,18 @@ def AnalizarInstruccion(instruct,linea):
                         AsignarValue(var_itera)
 
                     error = None
-             
                 while Resultado_Condicion(condicion):
+                    print ('ejecutando ',do_this)
                     error = AnalizarInstruccion(do_this,linea)
                     AsignarValue(modif_iter)
-                    if error != None: break
-              
+                    if error != None: break           
 
                 print ('for terminado')
-                return error          
+
+        else:
+            error = Error.Error(linea,'expected correct [ ] in for','incomplete sintax','jk0018')
+
+        return error          
     elif instruct[0].upper() == 'FUN':#DECLARA FUNCION
         print ("es funcion")
         if instruct[2] == '[' and instruct[-1] == ']' and not IsVariable(instruct[1]) and not IsReservada(instruct[1]):
@@ -423,10 +440,13 @@ def AnalizarInstruccion(instruct,linea):
                 return Error.Error(linea,'function not closed whith the corresponding ;','impcomplete sintax','j0017')
             else:
                 cod_function = lexemasXinstruccion[linea+1:cierra]
+                print ('codigo dentro de la función ',cod_function)
                 del lexemasXinstruccion[linea+1:cierra]
                 print ('codigo en la funcion :',*cod_function)
-                functions_program.append(Function.Function(instruct[1],instruct[3:len(instruct)-1],cod_function))
+                functions_program.append(Function.Function(instruct[1],instruct[3:len(instruct)-1],cod_function,None))
                 print (*functions_program)
+        else:
+            error = Error.Error(linea,'expected correct [ ] in while','incomplete sintax','jk0018')
     elif IsFuncion(instruct[0]) and len(instruct) > 1 and instruct[1] == '(' and instruct[-1] == ')':
         print ('llamando función ',instruct[0])
         Ejecutar_func(instruct[0],instruct[2:len(instruct)-1])
@@ -462,6 +482,7 @@ def main():
                 else:
                     i = 0
                     for j in lexemasXinstruccion:
+                        print(j,"\n")
                         err = AnalizarInstruccion(j,i)
                         if err != None:
                             window['salida'].Update(err,text_color='red')
@@ -490,14 +511,16 @@ def main():
         elif event == 'simple' or event == 'compuesto':
             cod = "if "
             if event == 'compuesto':
-                cod =+  "[ if_true , condition , else ]"
+                cod +=  "[ if_true , condition , else ]"
             else:
-                cod =+  "[ if_true , condition ]"
-                window['CODE'].Update(values['CODE']+cod)
+                cod +=  "[ if_true , condition ]"
+            window['CODE'].Update(values['CODE']+cod)
         elif event == 'FOR':
             window['CODE'].Update(values['CODE']+"\nFOR [ ejecuta ; inicializa_iterador , condition , modifica_iterador ]")
         elif event == 'WHILE':
             window['CODE'].Update(values['CODE']+"\nWHILE [ ejecuta , condition ]")
+        elif event.upper() in Joken_tipos:
+            window['CODE'].Update(values['CODE']+event)
 
 
 

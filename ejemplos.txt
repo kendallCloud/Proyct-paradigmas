@@ -45,5 +45,5 @@ n = 0
 END PROGRAM
 ------------------------------------------------
 variables [ int n ]
-    for [ print ( i ) ; i = 2 , i < 200 , i = i * 2 ]
+    for [ print ( i ) ; i = 2 , i < 200 , i = i * 2]
 END PROGRAM

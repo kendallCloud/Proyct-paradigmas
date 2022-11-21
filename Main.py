@@ -12,7 +12,7 @@ joken_log = ["EQUAL","<",">","<=",">=","AND","OR","!="]
 
 Palabras_reservadas = Arbol.AVLTree()
 
-Joken_reserv = ["IF","ELSE","WHILE","FOR","VARIABLES","END","PRINT"]
+Joken_reserv = ["IF","WHILE","FOR","VARIABLES","END","PRINT",";","FUN","PROGRAM"]
 for i in Joken_reserv:
     Palabras_reservadas.insert(i)
 
@@ -35,20 +35,21 @@ def ComposicionLexica(codigo):
     return codigo.split(' ')
 
 def make_window():
-    menu_def = [['&Nuevo', []],
-                ['&opciones', ['&Paste', ['Special', 'Normal', ], 'Undo'], ],
-                ['&Salir', ['---', 'Command &1', 'Command &2',
-                              '---', 'Command &3', 'Command &4']]]
-    right_click_menu_def = [[], ['Edit Me', 'Versions', 'Nothing','More Nothing','Exit']]
-    graph_right_click_menu_def = [[], ['Erase','Draw Line', 'Draw',['Circle', 'Rectangle', 'Image'], 'Exit']]
+    condicionales = ["simple","compuesto"]
+    bucles = ["FOR","WHILE"]
 
-    layout = [ [sg.Menu(menu_def, key='-MENU-', font='Courier 15', tearoff=True)] 
+    menu_def = [
+                ['&Opciones',['Palabras reservadas',Joken_reserv,
+                              'Sintaxis',['control',["condicionales",condicionales],["bucles",bucles],'funciones','operaciones'], 'Command &3', 'Command &4']],
+                ['&Help', '&About']]
+
+    layout = [ [sg.Menu(menu_def,tearoff=True)] 
     ,[sg.Text('---------------------------------------------------CODE-------------------------------------------', justification='top', font=("Helvetica", 16), relief=sg.RELIEF_RIDGE, k='-TEXT HEADING-', enable_events=False)],
     [[sg.Button('COMPILAR'),sg.Button('EJECUTAR')],  [sg.Multiline(size=(45,15), expand_x=True, expand_y=True, k='CODE')]],
     [sg.Text('-----------------------------------------------OUTPUT----------------------------------------', justification='top', font=("Helvetica", 16), relief=sg.RELIEF_RIDGE, k='OUTPUT')],
       [[sg.Multiline(size=(45,10), expand_x=True, expand_y=True, k='salida',disabled=True)]]]
     layout[-1].append(sg.Sizegrip()) 
-    window = sg.Window('J Retana k granados JOKEN',layout,margins=(85,100),resizable=True,return_keyboard_events=True)
+    window = sg.Window('J Retana k granados JOKEN',layout,resizable=True,return_keyboard_events=True)
     return window
 
 def remove_Carac_Muertos(the_list, val,val2,val3):
@@ -435,6 +436,7 @@ def main():
     window = make_window()
     while True:
         event, values = window.read()
+        print (event)
     #End program if user closes window
         if event == sg.WIN_CLOSED: 
             break
@@ -475,7 +477,30 @@ def main():
             window['CODE'].Update('')
         elif event == 'j:74' or event == 'J:74':
             plantilla = "variables [ tipo_dato dato ]\nCODE....\nEND PROGRAM"
-            window['CODE'].Update(plantilla) 
+            window['CODE'].Update(plantilla)
+        elif event == 'About':
+            window.disappear()
+            sg.popup('About JOKEN', 'Version beta',
+                    'Proyecto final del curso paradigmas de programación 2022\nProfesor: Josias Chavez\nAlumnos:Kendall Marino Granados Barrantes y Josué Retana Cespedes',  grab_anywhere=True)
+            window.reappear()
+        elif event in Joken_reserv:
+            window['CODE'].Update(values['CODE']+event)
+        elif event == 'funciones':
+            window['CODE'].Update(values['CODE']+"\nfun identifier [ params ]\n;")
+        elif event == 'simple' or event == 'compuesto':
+            cod = "if "
+            if event == 'compuesto':
+                cod =+  "[ if_true , condition , else ]"
+            else:
+                cod =+  "[ if_true , condition ]"
+                window['CODE'].Update(values['CODE']+cod)
+        elif event == 'FOR':
+            window['CODE'].Update(values['CODE']+"\nFOR [ ejecuta ; inicializa_iterador , condition , modifica_iterador ]")
+        elif event == 'WHILE':
+            window['CODE'].Update(values['CODE']+"\nWHILE [ ejecuta , condition ]")
+
+
+
     window.close()
 if __name__ == '__main__':
     sg.theme('Dark')

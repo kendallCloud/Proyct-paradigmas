@@ -47,3 +47,9 @@ END PROGRAM
 variables [ int n ]
     for [ print ( i ) ; i = 2 , i < 200 , i = i * 2]
 END PROGRAM
+------------------------------------------------
+variables [ int n ]
+n = 0
+print ( n )
+while [ n = n + 1 ; print ( n ) , n < 10 ]
+END PROGRAM

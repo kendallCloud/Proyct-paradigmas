@@ -376,8 +376,13 @@ def AnalizarInstruccion(instruct,linea):
                     do_this = do_this.split(';')
                     aux=[]
                     for d in do_this:
-                        aux.append(d.split(' '))
+                        a = d.split(' ')
+                        a[:] = (value for value in a if value != '')
+                        aux.append(a)
                     do_this = aux
+                    print ('do this while ',do_this)
+
+                    while ' ' in do_this: do_this.remove('')
 
                     while Resultado_Condicion(condicion):
                         for l in do_this:
@@ -521,9 +526,6 @@ def main():
             window['CODE'].Update(values['CODE']+"\nWHILE [ ejecuta , condition ]")
         elif event.upper() in Joken_tipos:
             window['CODE'].Update(values['CODE']+event)
-
-
-
     window.close()
 if __name__ == '__main__':
     sg.theme('Dark')
